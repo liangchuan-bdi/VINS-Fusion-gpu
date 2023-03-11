@@ -433,8 +433,11 @@ void PoseGraph::addKeyFrameIntoVoc(KeyFrame* keyframe)
 
 void PoseGraph::optimize4DoF()
 {
+    double avgProcessTime = 0;
+    long long processCounter = 0;
     while(true)
     {
+        TicToc t_process;
         int cur_index = -1;
         int first_looped_index = -1;
         m_optimize_buf.lock();
@@ -602,7 +605,13 @@ void PoseGraph::optimize4DoF()
             }
             m_keyframelist.unlock();
             updatePath();
-        }
+            
+	    auto currentProcessTime = t_process.toc();
+            avgProcessTime = (avgProcessTime * processCounter + currentProcessTime) / (processCounter + 1);
+            ++processCounter;
+            std::cout << "global map update process time: " << currentProcessTime << "\n"
+                      << "AVG global map update process time: " << avgProcessTime << "\n";
+	}
 
         std::chrono::milliseconds dura(2000);
         std::this_thread::sleep_for(dura);

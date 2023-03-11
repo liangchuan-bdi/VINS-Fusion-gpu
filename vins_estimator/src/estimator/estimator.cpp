@@ -155,6 +155,8 @@ bool Estimator::IMUAvailable(double t)
 
 void Estimator::processMeasurements()
 {
+    double avgProcessTime = 0;
+    long long measurementCounter = 0;
     while (1)
     {
         //printf("process measurments\n");
@@ -217,7 +219,11 @@ void Estimator::processMeasurements()
             pubPointCloud(*this, header);
             pubKeyframe(*this);
             pubTF(*this, header);
-            printf("process measurement time: %f\n", t_process.toc());
+	    auto currentProcessTime = t_process.toc();
+	    avgProcessTime = (avgProcessTime * measurementCounter + currentProcessTime) / (measurementCounter + 1);
+	    ++measurementCounter;
+            printf("process measurement time: %f\n", currentProcessTime);
+	    std::cout << "AVG process measurement time: " << avgProcessTime << "\n";
         }
 
         if (! MULTIPLE_THREAD)

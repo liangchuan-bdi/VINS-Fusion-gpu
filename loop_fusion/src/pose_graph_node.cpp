@@ -178,8 +178,8 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     m_buf.lock();
     pose_buf.push(pose_msg);
     m_buf.unlock();
-    /*
-    printf("pose t: %f, %f, %f   q: %f, %f, %f %f \n", pose_msg->pose.pose.position.x,
+    
+    /*printf("pose t: %f, %f, %f   q: %f, %f, %f %f \n", pose_msg->pose.pose.position.x,
                                                        pose_msg->pose.pose.position.y,
                                                        pose_msg->pose.pose.position.z,
                                                        pose_msg->pose.pose.orientation.w,
@@ -244,8 +244,11 @@ void extrinsic_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 
 void process()
 {
+    double avgProcessTime = 0;
+    long long processCounter = 0;
     while (true)
     {
+        TicToc t_process;
         sensor_msgs::ImageConstPtr image_msg = NULL;
         sensor_msgs::PointCloudConstPtr point_msg = NULL;
         nav_msgs::Odometry::ConstPtr pose_msg = NULL;
@@ -369,6 +372,12 @@ void process()
                 frame_index++;
                 last_t = T;
             }
+	    auto currentProcessTime = t_process.toc();
+            avgProcessTime = (avgProcessTime * processCounter + currentProcessTime) / (processCounter + 1);
+	    ++processCounter;
+	    std::cout << "loop fusion process time: " << currentProcessTime << "\n"
+		      << "AVG loop fusion process time: " << avgProcessTime << "\n"; 
+            
         }
         std::chrono::milliseconds dura(5);
         std::this_thread::sleep_for(dura);
@@ -478,12 +487,13 @@ int main(int argc, char **argv)
         load_flag = 1;
     }
 
-    ros::Subscriber sub_vio = n.subscribe("/vins_estimator/odometry", 2000, vio_callback);
+    std::string estimatorNodeName = "/vins_node";
+    ros::Subscriber sub_vio = n.subscribe(estimatorNodeName + "/odometry", 2000, vio_callback);
     ros::Subscriber sub_image = n.subscribe(IMAGE_TOPIC, 2000, image_callback);
-    ros::Subscriber sub_pose = n.subscribe("/vins_estimator/keyframe_pose", 2000, pose_callback);
-    ros::Subscriber sub_extrinsic = n.subscribe("/vins_estimator/extrinsic", 2000, extrinsic_callback);
-    ros::Subscriber sub_point = n.subscribe("/vins_estimator/keyframe_point", 2000, point_callback);
-    ros::Subscriber sub_margin_point = n.subscribe("/vins_estimator/margin_cloud", 2000, margin_point_callback);
+    ros::Subscriber sub_pose = n.subscribe(estimatorNodeName + "/keyframe_pose", 2000, pose_callback);
+    ros::Subscriber sub_extrinsic = n.subscribe(estimatorNodeName + "/extrinsic", 2000, extrinsic_callback);
+    ros::Subscriber sub_point = n.subscribe(estimatorNodeName + "/keyframe_point", 2000, point_callback);
+    ros::Subscriber sub_margin_point = n.subscribe(estimatorNodeName + "/margin_cloud", 2000, margin_point_callback);
 
     pub_match_img = n.advertise<sensor_msgs::Image>("match_image", 1000);
     pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1000);
